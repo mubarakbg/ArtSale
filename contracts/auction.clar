@@ -94,3 +94,36 @@
   )
 )
 
+;; Function to end auction
+(define-public (end-auction (auction-id uint))
+  (let
+    (
+      (auction (unwrap! (map-get? auctions { auction-id: auction-id }) (err u404)))
+    )
+    (asserts! (>= block-height (get end-block auction)) err-auction-ended)
+
+    (match (get highest-bidder auction)
+      winner
+        (begin
+          ;; Transfer NFT to winner
+          (try! (as-contract (contract-call? .nft-trait transfer
+            (get nft-asset-id auction)
+            tx-sender
+            winner
+          )))
+          ;; Transfer funds to artist
+          (try! (as-contract (stx-transfer? (get highest-bid auction) tx-sender (get artist auction))))
+        )
+      none
+        ;; Return NFT to artist if no bids
+        (try! (as-contract (contract-call? .nft-trait transfer
+          (get nft-asset-id auction)
+          tx-sender
+          (get artist auction)
+        )))
+    )
+
+    (ok true)
+  )
+)
+
