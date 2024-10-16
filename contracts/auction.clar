@@ -127,3 +127,12 @@
   )
 )
 
+;; Read-only function to get auction details
+(define-read-only (get-auction-details (auction-id uint))
+  (map-get? auctions { auction-id: auction-id })
+)
+
+;; Read-only function to get bid details
+(define-read-only (get-bid-details (auction-id uint) (bidder principal))
+  (map-get? bids { auction-id: auction-id, bidder: bidder })
+)
