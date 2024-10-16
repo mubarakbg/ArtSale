@@ -60,3 +60,37 @@
     (ok auction-id)
   )
 )
+
+;; Function to place a bid
+(define-public (place-bid (auction-id uint) (bid-amount uint))
+  (let
+    (
+      (auction (unwrap! (map-get? auctions { auction-id: auction-id }) (err u404)))
+      (current-highest-bid (get highest-bid auction))
+    )
+    (asserts! (< block-height (get end-block auction)) err-auction-ended)
+    (asserts! (> bid-amount current-highest-bid) err-bid-too-low)
+    (asserts! (>= bid-amount (get reserve-price auction)) err-bid-too-low)
+
+    ;; Return previous highest bid if exists
+    (match (get highest-bidder auction)
+      prev-bidder (as-contract (try! (stx-transfer? current-highest-bid tx-sender prev-bidder)))
+      none true
+    )
+
+    ;; Transfer bid amount to contract
+    (try! (stx-transfer? bid-amount tx-sender (as-contract tx-sender)))
+
+    ;; Update auction details
+    (map-set auctions
+      { auction-id: auction-id }
+      (merge auction { highest-bid: bid-amount, highest-bidder: (some tx-sender) })
+    )
+
+    ;; Record bid
+    (map-set bids { auction-id: auction-id, bidder: tx-sender } { amount: bid-amount })
+
+    (ok true)
+  )
+)
+
